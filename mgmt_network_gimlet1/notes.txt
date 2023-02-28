@@ -1,0 +1,99 @@
+iCE40LP1K-CM49
+VSC 8552 - dual SGMII PHY?
+KSZ8463FRL - media converter? 3 port switch
+	LQFP-64_10x10mm_P0.5mm footprint exists
+
+
+
+ice40 rails:
+	Bank 0+1 VCCIO
+	Bank 2+3 VCCIO (LVDS pairs here)
+	SPI VCCIO (unused? check if needed w/ NVCM) - yes, needed
+	VPP_FAST - MUST connect to VCCIO_0
+	VCC - 1.2V, 6.4 mA MAX (15.7 mA compat)
+	VPP_2V5 - 2.5V, 7.7 mA MAX (compat)
+	VCCPLL - 1.2V, 1.5 mA MAX (8 mA compat)
+
+
+KSZ8463FRL rails:
+	VDD_IO - ? V, 98 mA (typical)
+		"if VDDIO is 1.8V, use external VDD_L"
+	VDD_L - internal or external, connect to VDD_AL, VDDCOL
+	VDD_COL - connect to VDD_L
+	VDD_AL - connect to VDD_L
+	VDD_A3.3 - 3.3V, 51 mA (typical)
+
+VSC8552 rails:
+	VDD25A - 2.5V, 265 mA MAX
+	VDD25 - 2.5V, 65 mA MAX
+	VDD1 - 1V, 755 mA MAX
+	VDD1A - 1V, 265 mA MAX
+
+
+input power - 12V, 2A
+
+Rails:
+12V 2A = 24W
+1.2V ~24 mA
+2.5V >330 mA
+1V ~1A - check the tolerances here, very tight
+
+Preliminary proposal - buck to 3.3V, linear down to 1.2, 1, 2.5
+	might split 1 and 1A for current reasons
+Total Iout for buck - <2A
+	TPS82140?
+1V LDO - TLV757P - only option in SOT23 @ 1A @ 1V
+1.2V LDO - TLV700 - cheap SC70 option @ 1.2V
+
+
+refclks:
+	VSC8552 - 125 or 25 MHz, AC coupled, LVDS
+		can be SE with circuit described in datasheet
+	KSZ8463FRL - 25 or 50 MHz, XTAL or osc, single-ended CMOS
+	ice40 - literally whatever lol
+LMK1C1103 1:3 output buffer? need input but would be good
+
+18002441111
+
+
+power sequencing
+KSZ - recommend all at once, if not, A3.3 and VDDIO have no requirement but come before L (irrelevant)
+vsc - no sequencing requirement but power and clock must be stable before releasing reset
+lp4k - when configuring from NVCM, VCC and VPP2V5 must be up 0.25ms before VCCSPI, but maybe not if between 0.4 and 10 V/ms
+	UP and LM both require VCC+VCCPLL to come up before VCCIO
+
+who's on what rail?
+
+3.3V - only VDD_A3.3 on KSZ, and all the linear regs
+2.5V - VDD_IO on KSZ, VDD25+VDD25A on VSC, VCCIO+VPP_2V5+VCCIO_SPI(?) on LP4K
+1.2V - VCC+VCCPLL on LP4K
+1.0V - VDD1+VDD1A on VSC8552
+
+2 mA sink on PG implies Rpu of 1.65k or more
+EN thresholds - 0.9V for TLV700, 1V for TLV757
+
+.31845374111 = t / RC
+
+so .32 time constants to rise to 0.9V from 3.3V
+
+if t = 250 us and R = 10kOhm, C = 78 nF
+if R = 10kOhm and C = 100 nF, t = 318 microseconds or so
+
+
+arright there's no sequencing req because the requirements are contradictory.
+
+3V3 investigation - major point of issue is the SMI lines (shared, DC coupled).
+
+VIH for CMOS inputs on KSZ is 2.1V @ 3.3V
+redo the pull-up math
+MDIO is push-pull, MDC is sourced from master (STM32) - check if VSC can handle it
+VSC is max 3.3V, so should be fine - MDC is explicitly marked 3V tolerant
+STM32 i/o VIH is 2.31V min (CMOS) at 3.3V. i call it good.
+
+new target - 0.9987 in
+
+left to right - 30, 31, 20, 21, 10, 11, 00, 01
+left to right - 5, 4, 11, 10, 9, 12, 8, 13, clk2, clk1 (0 and 1 whereever)
+
+
+aux - bias the receiver?

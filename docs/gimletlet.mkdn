@@ -1,0 +1,292 @@
+# Gimletlet
+
+Gimletlet was designed as a service processor host board for testing interfaces
+to blocks of the proposed Gimlet schematic. Compared to the original Gemini
+Bringup board, Gimletlet makes fewer assumptions about what you'll plug into it.
+It exposes common digital interfaces directly, so you can attach external eval
+or test hardware.
+
+## Render
+
+![Top view of rev2 board, pre-production render](gimletlet-2-render.png)
+
+The render above shows the board in its "standard" orientation. We'll refer to
+places on the board using compass directions -- there is a North indicator in
+the northwest corner (just to the left of the UART7 connector).
+
+## Configuration jumpers
+
+For the board to work, you will need to have the following jumpers set
+correctly. The normal position is in **bold.**
+
+- JP1 (northeast corner marked "USE JACK")
+    - **Installed**: power input barrel jack is the supply to the 3v3 regulator.
+    - Removed: to use the 3v3 regulator you must supply power through the
+      eastern pin of JP1, e.g. from a bench supply.
+- JP2 (south of J9/I2C2 marked "USE REG")
+    - **Installed**: 3v3 regulator is the power source to the SP and expansion
+      connectors. You must provide it with power (see above) for it to be
+      useful.
+    - Removed: you must provide 3.3V from an off-board source, through any of
+      the expansion connectors, the J8 header, or the north pin of JP2.
+- JP3 (east of SP marked "ROM BOOT")
+    - Installed: contents of SP flash are ignored. SP boots into ROM bootloader.
+    - **Removed**: SP boots image in flash, if a valid image exists, and
+      otherwise falls back to ROM bootloader.
+
+## Program/debug
+
+J15, in the rough center of the board to the southeast of the SP, is the SWD
+header. This allows programming and debugging the SP firmware, and provides
+trace output and logs through the SWO pin. We suggest using an STLink/V3 here.
+
+Pin 1 is marked with a V as the southwest corner. This means the red stripe on
+the SWD cable should be oriented to the west, and the key facing south.
+
+Just to the southeast is SW1, the reset switch for the SP.
+
+## LEDs
+
+There are four LEDs on the board, controlled by the SP firmware.
+
+- D1: PG2
+- D2: PG3
+- D3: PG4
+- D4: PG5
+
+All are active high -- that is, drive the GPIO high to turn on the LED.
+
+## PMOD
+
+PMOD is a loose industry standard originally introduced by Digilent on their
+FPGA boards. It's useful because there are off-the-shelf eval modules available
+for a lot of common parts, and they're always 3.3V, so there's no risk of frying
+anything (assuming you plug it in right). The black rectangular connectors
+around the edge of the board are PMOD connectors. Our PMOD connectors follow one
+of four pinouts, three of which are in the standard and one of which is
+de-facto:
+
+- SPI: PMOD type 2A pinout, which is an "expanded SPI" pinout carrying a SPI bus
+  and two extra I/O lines, which can be used as extra chip selects or as
+  interrupt/reset lines. You can also insert SPI type 2 (one-row) PMOD modules
+  into the _bottom_ row of pins.
+
+- UART: PMOD type 3 pinout, which carries one UART with hardware flow control.
+
+- I2C: PMOD type 6 pinout, which carries one I2C bus plus SMB alert and reset
+  lines (which can be repurposed as GPIO if you don't need alert/reset).
+
+- QuadSPI: so, this was intended to match the pinout on Digilent's PMOD-SF3
+  flash module, but row 2 is off by one. However, you can still use that board
+  in 1 or 2 I/O mode, just not 4. We'll be making our own attachment with the
+  specific flash circuits we're using in Gimlet anyway.
+
+All pinouts are printed on the board. In each case, the pinout is shown from the
+perspective of someone looking down on the board (as in the photo below); the
+square in each pinout maps to the square copper pad on the connector. We did it
+this way because it simplifies choosing a pin to clip with a logic analyzer.
+
+Note that in all cases, you can also switch the PMOD connector to any of the
+CPU's alternate functions on the same pin, including using them as basic GPIOs.
+This is up to the firmware.
+
+Starting at the northwest and moving around the edge of the board, these are the
+PMOD connectors, their routing to SP pins, and the STM32H7 Alternate Function
+number:
+
+- J14: UART7 (all AF7)
+    - RX (data into SP): PE7
+    - TX (data from SP): PE8
+    - ~RTS (output from SP): PE9
+    - ~CTS (input to SP): PE10
+- J2: QSPI
+    - CLK: PF10 (AF9)
+    - IO0: PF8 (AF10)
+    - IO1: PF9 (AF10)
+    - IO2: PF7 (AF9)
+    - IO3: PF6 (AF9)
+    - ~CS: PG6 (AF10)
+    - PF4 and PF5 are routed to unused pins on the connector.
+- J9: I2C2
+    - SDA: PF0 (AF4)
+    - SCL: PF1 (AF4)
+    - ~SMBA: PF2 (AF4)
+    - ~RESET: PF3 (GPIO)
+- J5: SPI6 
+    - ~CS: PG8 (AF5)
+    - SCK: PG13 (AF5)
+    - MOSI: PG14 (AF5)
+    - MISO: PG12 (AF5)
+    - ~INT: PG11 (GPIO)
+    - ~RESET: PG15 (GPIO)
+- J13: USART2 (all AF7)
+    - RX (data into SP): PD6
+    - TX (data from SP): PD5
+    - ~RTS (output from SP): PD4
+    - ~CTS (input to SP): PD3
+- J3: SPI3
+    - ~CS: PA15 (AF6)
+    - SCK: PC10 (AF6)
+    - MOSI: PC12 (AF6)
+    - MISO: PC11 (AF6)
+    - ~INT: PD0 (GPIO)
+    - ~RESET: PD1 (GPIO)
+- J12: USART1 (all AF7)
+    - RX (data into SP): PB7
+    - TX (data from SP): PB6
+    - ~RTS (output from SP): PA12
+    - ~CTS (input to SP): PA11
+- J10: I2C3
+    - SDA: PC9 (AF4)
+    - SCL: PA8 (AF4)
+    - ~SMBA: PA9 (AF4)
+    - ~RESET: PA10 (GPIO)
+- J11: I2C4 (shared with NIC, see below)
+    - SDA: PF15 (AF4)
+    - SCL: PF14 (AF4)
+    - ~SMBA: PF13 (AF4)
+    - ~RESET: PG0 (GPIO)
+- J4: SPI4 (shared with NIC, see below)
+    - ~CS: PE11 (AF5)
+    - SCK: PE12 (AF5)
+    - MOSI: PE14 (AF5)
+    - MISO: PE13 (AF5)
+    - ~INT: PE15 (GPIO)
+    - ~RESET: PB10 (GPIO)
+
+## NIC connector
+
+The NIC connector is on the west edge of the board, and is intended to connect
+to the management network interface circuit (or other Ethernet devices). It
+provides six groups of signals:
+
+- RMII, the interface from the SP's Ethernet MAC to a PHY or external switch;
+- SMI/MDIO, the management interface used to control Ethernet PHYs;
+- SPI4 for more complex configuration of external switches;
+- I2C4, just in case;
+- Interrupt and reset lines for the PHY and SPI buses; and
+- A group of unassigned GPIOs.
+
+Note that SPI4 and I2C4 are shared between PMOD headers and the NIC connector.
+You must choose one or the other, or arrange for them not to conflict (for
+example, our current NIC options don't actually use I2C4, and you could choose
+to use an extra pin on the NIC connector as an additional CS to share SPI4).
+
+The connector is a Hirose DF9 41-pin. Viewed from the top:
+
+![Hirose DF9 41-pin socket pinout](hirose-df9-41s.png)
+
+Pinout:
+
+1. GND
+2. RMII reference clock - 50MHz while PHY/switch is powered.
+    - PA1 AF11
+3. MDC - clock output from SP for SMI interface.
+    - PC1 AF11
+4. GND
+5. MDIO - bidirectional SMI data.
+    - PA2 AF11
+6. RMII `CRS_DV` - receive strobe for "data valid" on the RMII interface.
+    - PA7 AF11
+7. ~IRQ from PHY
+    - PC0 GPIO
+8. RMII RXD0 - received data to SP
+    - PC4 AF11
+9. ~RESET to PHY
+    - PA5 GPIO
+10. RMII RXD1 - received data to SP
+    - PC5 AF11
+11. GND
+12. GND
+13. PB0 - GPIO
+14. PB1 - GPIO
+15. PB2 - GPIO
+16. PF11 - GPIO
+17. PF12 - GPIO
+18. GND
+19. 3V3
+20. I2C4 ~SMBA
+    - PF13 AF4
+21. 3V3
+22. I2C4 SCL
+    - PF14 AF4
+23. 3V3
+24. I2C4 SDA
+    - PF15 AF4
+25. GND
+26. GND
+27. SPI4 ~CS (shared with PMOD)
+    - PE11 AF5
+28. SPI4 SCK
+    - PE12 AF5
+29. SPI4 ~INT (shared with PMOD)
+    - PE15 GPIO
+30. SPI4 MISO
+    - PE13 AF5
+31. SPI4 ~RESET
+    - PB10 GPIO
+32. SPI4 MOSI
+    - PE14 AF5
+33. 3V3
+34. GND
+35. 3V3
+36. RMII TXEN - transmit strobe from SP for RMII interface
+    - PB11 AF11
+37. 3V3
+38. RMII TXD0 - sent data from SP
+    - PB12 AF11
+39. GND
+40. RMII TXD1 - sent data from SP
+    - PB13 AF11
+41. GND
+
+Because the Hirose DF9 is difficult to probe, most of these signals are broken
+out to headers and test points:
+
+- The RMII and MDC signals have labeled test points near the connector.
+- SPI4 is available on J4.
+- I2C4 is available on J11.
+
+When sharing SPI4 with the PMOD connector, note that any of the PB/PF signals
+could be reappropriated as an extra chip select for the NIC.
+
+## Ground points
+
+Near every off-board connector is a ground point -- a metal loop sticking up out
+of the board on an insulated base. These are intended for the ground clip of an
+oscilloscope probe or logic analyzer.
+
+Ground is also available on the south row of J7/J8 (see below).
+
+## Power headers
+
+In addition to the expansion ports, power and ground are available on two
+headers:
+
+- J7: north row is 12V (or whatever's coming into the barrel jack), south row is
+  GND.
+- J8: north row is 3.3V, south row is GND.
+
+If you have disconnected JP1, you might choose to provide 5+V through the north
+row of J7. If you have disconnected JP2, you might choose to provide 3.3V
+through the north row of J8.
+
+## Whatever headers
+
+There are two "whatever headers" on the board providing GPIO for future use,
+along with 3.3v and ground.
+
+- J17 exposes PE2-PE6.
+- J18 exposes B14/15 and D8-12.
+
+All these signals are otherwise unused on the board, so you can appropriate them
+without messing up any of the expansion connectors.
+
+## Where is the root of trust?
+
+Gimletlet does not have an on-board root of trust, because at the time it was
+built, it was hard to get the right part from NXP. We plan an updated RoT board
+with a PMOD connector that can be attached to any of the SPI headers.
+
+
+

@@ -1,0 +1,135 @@
+# Glorified Gimletlet (Gimletlet rev2) User Guide
+
+## General
+
+- Locations on the board will be referenced in terms of compass directions.
+  There is a North arrow in the northwest corner of the board next to J14.
+
+- All I/O is 3.3V. If you want 5V or 1.8V you will need an external level
+  shifter.
+
+## Power
+
+You have three options.
+
+**Note:** early series Gimletlet2 boards are missing C1/C2, which are necessary
+for the on-board regulator to operate. If your board is missing these parts (in
+the northeast corner) then you must provide 3.3V from an external supply
+(below).
+
+### Using the barrel jack
+
+J1 is a barrel jack that can accept power from the 12V adapters distributed with
+the Gemini bringup boards. This is converted to 3.3V by the regulator U1.
+
+- JP1 (USE JACK), northeast corner: closed
+- JP2 (USE REG), west of that: closed
+- No other power supply attached.
+
+### Providing off-board 5-12V
+
+To provide off-board power in the range of 5-12V for use by the onboard
+regulator, you can open JP1 (USE JACK, northeast corner) and attach a power lead
+to its eastern pin. Remember to also connect ground to your supply, through one
+of the ground posts or through the southern row of J7/J8 (northeast of SP U2).
+
+- JP2 (USE REG, west of JP1) must be closed for this to work.
+- Barrel jack J1 is out of the circuit with JP1 open, so connect it or don't, it
+  doesn't matter.
+
+### Providing off-board 3.3V
+
+To bypass the onboard regulators entirely, you can provide 3.3V from an external
+supply. If you have an early series board that is missing C1/C2, this is your
+only option.
+
+- JP2 (USE REG, northeast corner just south of I2C2 header J9): open.
+- JP1 (USE JACK): doesn't matter
+
+Apply external power either on the northern pin of JP2, or through any pin on
+the north row of J8 (marked 3v3s, northeast of SP U2).
+
+## Programming and recovery
+
+To program the SP, connect an STLink V3 to J15 (SWD, southeast of SP U2) and
+apply power to the board through one of the methods above.
+
+SW1 (RESET, southeast of that) resets the SP.
+
+If you want to force the chip into bootloader, e.g. to recover from a really
+corrupt firmware image or because you're having a hard time attaching GDB with
+the chip in a low-power mode, close JP3 (ROM BOOT, east of SP U2). Remember to
+open it again later, or the chip will never leave the bootloader.
+
+## Blinkies
+
+All LEDs are to the south of the big IC U2. All are active high.
+
+- D1 - SP PG2
+- D2 - SP PG3
+- D3 - SP PG4
+- D4 - SP PG5
+
+## PMOD connectors
+
+The board sports ten PMOD-compatible connectors of four types.
+
+### UARTs
+
+UART connectors use the standard PMOD "type 3" pinout.
+
+- J12 (southeast corner): USART1. TX=B6, RX=B7, RTS=A12, CTS=A11.
+- J13 (east edge): USART2. TX=D5, RX=D6, RTS=D4, CTS=D3.
+- J14 (northwest corner): UART7. TX=E8, RX=E7, RTS=E9, CTS=E10.
+
+### I2C
+
+I2C connectors use the standard PMOD "type 6" pinout.
+
+- J9 (north edge): I2C2. SDA=F0, SCL=F1, SMBA=F2, RESET=F3.
+- J10 (south edge): J2C3. SDA=C9, SCL=A8, SMBA=A9, RESET=A10.
+- J11 (south edge): I2C4. SDA=F15, SCL=F14, SMBA=F13, RESET=G0. 
+
+### SPI
+
+SPI connectors use the standard PMOD "type 2A" pinout.
+
+- J3 (southeast): SPI3. MISO=C11, MOSI=C12, SCK=C10, CS=A15, INT=D0, RESET=D1.
+- J4 (southwest): SPI4. MISO=E13, MOSI=E14, SCK=E12, CS=E11, INT=E15, RESET=B10.
+- J5 (northeast): SPI6. MISO=G12, MOSI=G14, SCK=G13, CS=G8, INT=G11, RESET=G15.
+
+### QuadSPI
+
+The QuadSPI connector uses a variant on the SPI pinout, since there is no
+standard PMOD QuadSPI pinout.
+
+J2 (north edge): QSPI1.
+- CLK: F10
+- IO0: F8
+- IO1: F9
+- IO2: F7
+- IO3: F6
+- CS: G6
+
+F4/F5 are routed to the QSPI connector as extra signals (e.g. write protect,
+hold, reset).
+
+## Hacking connectors
+
+Four connectors on the board are intended for random unforeseen uses. They are
+labeled on the silkscreen.
+
+- J7: 3x 12V (north row) and GND (south row)
+- J8: 3x 3v3 (north row) and GND (south row)
+- J16: ground, 3v3, and seven free GPIO
+- J17: ground, 3v3, and five free GPIO
+
+## NIC connector and test points
+
+The NIC connector (J6, west edge) is a Hirose DF9 connector intended to support
+modular network interface boards. It provides access to RMII, SPI4, and I2C4.
+
+This means that certain NIC cards installed at J6 may interfere with accessories
+plugged into J4 (SPI4) and J11 (I2C4). Be warned.
+
+The NIC pinout is a bit long to type here but it's in the schematic.
