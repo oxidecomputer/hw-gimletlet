@@ -9,6 +9,7 @@ bring-up.
 ![gimletlet-2](docs/gimletlet-2-render.png)
 
 Some [design notes](docs/gimletlet-2.mkdn) for gimletlet2
+More [design notes](docs/gimletlet.mkdn) for gimletlet2
 
 Some [mechanical specs](docs/gimletlet-mechanical.pdf)
 
@@ -23,7 +24,7 @@ Some [mechanical specs](docs/gimletlet-mechanical.pdf)
 
 ![gimletlet-1](docs/gimletlet1.png)
 
-Some [design notes](docs/gimletlet.mkdn) for gimletlet1
+
 
 ## management network bringup
 
